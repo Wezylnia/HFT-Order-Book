@@ -1,0 +1,27 @@
+# --- Derleme ve Geçici Dosyalar ---
+build/
+bin/
+out/
+*.o
+*.obj
+*.exe
+
+# --- IDE ve Editör Ayarları ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Dokümantasyon (İstediğin gibi .md dosyaları) ---
+*.md
+# Eğer README.md kalsın istersen şu satırı ekleyebilirsin:
+# !README.md
+
+# --- İşletim Sistemi Dosyaları ---
+.DS_Store
+Thumbs.db
+
+# --- Test ve Benchmark Çıktıları ---
+tests/build/
+bench/build/
+*.log
