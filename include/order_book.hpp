@@ -45,6 +45,7 @@ public:
 
     // Returns the best level (lowest ask / highest bid) or nullptr if empty.
     [[nodiscard]] PriceLevel* best_level() noexcept;
+    [[nodiscard]] const PriceLevel* best_level() const noexcept;
 
     [[nodiscard]] bool empty() const noexcept { return levels_.empty(); }
     [[nodiscard]] Side side()  const noexcept { return side_; }

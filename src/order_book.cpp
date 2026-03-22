@@ -92,6 +92,16 @@ PriceLevel* BookSide::best_level() noexcept {
     }
 }
 
+const PriceLevel* BookSide::best_level() const noexcept {
+    if (levels_.empty()) {
+        return nullptr;
+    }
+    if (side_ == Side::Buy) {
+        return &(levels_.rbegin()->second);
+    }
+    return &(levels_.begin()->second);
+}
+
 // ── OrderBook ─────────────────────────────────────────────────────────────────
 
 void OrderBook::place_on_book(Order* o) {

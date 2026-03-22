@@ -43,6 +43,7 @@ FetchContent_Declare(
 set(BENCHMARK_ENABLE_TESTING       OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS   OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_INSTALL_DOCS         OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_WERROR        OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googlebenchmark)
 
 # ── Core library ──────────────────────────────────────────────────────────────
