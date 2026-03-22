@@ -38,7 +38,8 @@ public:
     PriceLevel* get_or_create_level(Price price);
 
     // Returns the level or nullptr if it does not exist.
-    [[nodiscard]] PriceLevel* find_level(Price price) noexcept;
+    [[nodiscard]] PriceLevel*       find_level(Price price) noexcept;
+    [[nodiscard]] const PriceLevel* find_level(Price price) const noexcept;
 
     // Erases a level. Caller must ensure the level is empty first.
     void erase_level(Price price);

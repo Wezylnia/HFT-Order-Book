@@ -71,6 +71,11 @@ PriceLevel* BookSide::find_level(Price price) noexcept {
     return (it != levels_.end()) ? &(it->second) : nullptr;
 }
 
+const PriceLevel* BookSide::find_level(Price price) const noexcept {
+    auto it = levels_.find(price);
+    return (it != levels_.end()) ? &(it->second) : nullptr;
+}
+
 void BookSide::erase_level(Price price) {
     assert(levels_.count(price) > 0);   // var olmayan level'ı silme girişimini yakala
     levels_.erase(price);

@@ -107,21 +107,92 @@ EventList MatchingEngine::submit(const NewMarketOrderCmd& cmd) {
     return out;
 }
 
-// ── submit — Cancel (Milestone 3 stub) ───────────────────────────────────────
+// ── submit — Cancel ───────────────────────────────────────────────────────────
+//
+// Removes the target order from its price level, destroys it, and emits
+// OrderCancelled carrying the remaining quantity at the time of cancellation.
+// If the level drains to empty, remove_from_book() erases the level node.
 
-EventList MatchingEngine::submit(const CancelOrderCmd& /*cmd*/) {
+EventList MatchingEngine::submit(const CancelOrderCmd& cmd) {
     EventList out;
     out.reserve(kEventReserve);
-    // TODO M3: validate → remove_from_book → unregister_order → emit Cancelled
+
+    const ValidationResult vr = validate(cmd, book_);
+    if (!vr.ok) {
+        out.push_back(make_order_event(
+            advance_seq(), cmd.target_order_id, EventType::OrderRejected,
+            0, vr.reason));
+        return out;
+    }
+
+    Order* o              = book_.find(cmd.target_order_id);
+    const OrderId  id        = o->id;
+    const Quantity remaining = o->remaining_qty;
+
+    book_.remove_from_book(o);
+    // o is still valid here (still owned by order_index_); capture state before drop
+    o->state = OrderState::Cancelled;
+    auto owner = book_.unregister_order(id);   // unique_ptr → Order destroyed at scope exit
+
+    out.push_back(make_order_event(
+        advance_seq(), id, EventType::OrderCancelled, remaining));
     return out;
 }
 
-// ── submit — Modify (Milestone 3 stub) ───────────────────────────────────────
+// ── submit — Modify ───────────────────────────────────────────────────────────
+//
+// Semantics: atomic cancel-then-resubmit. Time priority resets unconditionally.
+// The new order inherits the old order's id and side, but gets a fresh seq_no
+// (the new seq_no appears in the OrderModified event for replay correlation).
+//
+// If the new price crosses the opposite side, match() fires immediately.
+// The OrderModified event is emitted before any trades, signalling the new qty.
+// Residual (if any) rests silently — the modify event already represents resting.
 
-EventList MatchingEngine::submit(const ModifyOrderCmd& /*cmd*/) {
+EventList MatchingEngine::submit(const ModifyOrderCmd& cmd) {
     EventList out;
     out.reserve(kEventReserve);
-    // TODO M3: cancel + re-submit at new price/qty (time priority resets)
+
+    const ValidationResult vr = validate(cmd, book_);
+    if (!vr.ok) {
+        out.push_back(make_order_event(
+            advance_seq(), cmd.target_order_id, EventType::OrderRejected,
+            0, vr.reason));
+        return out;
+    }
+
+    // Capture side before removing (needed to construct the replacement Order)
+    Order* old       = book_.find(cmd.target_order_id);
+    const Side   side = old->side;
+    const OrderId id  = old->id;
+
+    book_.remove_from_book(old);
+    auto discard = book_.unregister_order(id);   // old is dangling from here
+
+    // Build replacement with same id/side; new price, qty, seq_no
+    const SeqNo seq  = advance_seq();
+    auto o           = std::make_unique<Order>();
+    o->id            = id;
+    o->remaining_qty = cmd.new_quantity;
+    o->price         = cmd.new_price;
+    o->side          = side;
+    o->seq_no        = seq;
+    o->state         = OrderState::Accepted;
+    Order* incoming  = book_.register_order(std::move(o));
+
+    // OrderModified signals acceptance of the new parameters before any trades
+    out.push_back(make_order_event(
+        seq, incoming->id, EventType::OrderModified, incoming->remaining_qty));
+
+    match(incoming, out);
+
+    if (incoming->remaining_qty > 0) {
+        incoming->state = OrderState::Active;
+        book_.place_on_book(incoming);
+    } else {
+        auto done = book_.unregister_order(incoming->id);
+    }
+
     return out;
 }
 
