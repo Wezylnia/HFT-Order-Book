@@ -69,6 +69,7 @@ add_executable(exchange_tests
     tests/test_cancel.cpp
     tests/test_modify.cpp
     tests/test_invariants.cpp
+    tests/test_tif.cpp
 )
 target_link_libraries(exchange_tests PRIVATE exchange_engine GTest::gtest_main)
 
