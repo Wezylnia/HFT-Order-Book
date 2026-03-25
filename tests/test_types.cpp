@@ -46,6 +46,7 @@ TEST(EnumUnderlying, AllAreOneByte) {
     EXPECT_EQ(sizeof(OrderState),   1u);
     EXPECT_EQ(sizeof(EventType),    1u);
     EXPECT_EQ(sizeof(RejectReason), 1u);
+    EXPECT_EQ(sizeof(TimeInForce),  1u);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -93,6 +94,12 @@ TEST(RejectReasonEnum, Values) {
     EXPECT_EQ(static_cast<uint8_t>(RejectReason::OrderNotFound),    5u);
     EXPECT_EQ(static_cast<uint8_t>(RejectReason::OrderNotActive),   6u);
     EXPECT_EQ(static_cast<uint8_t>(RejectReason::InvalidModify),    7u);
+}
+
+TEST(TimeInForceEnum, Values) {
+    EXPECT_EQ(static_cast<uint8_t>(TimeInForce::GTC), 0u);
+    EXPECT_EQ(static_cast<uint8_t>(TimeInForce::IOC), 1u);
+    EXPECT_EQ(static_cast<uint8_t>(TimeInForce::FOK), 2u);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

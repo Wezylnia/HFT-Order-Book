@@ -62,4 +62,11 @@ enum class RejectReason : std::uint8_t {
     InvalidModify    = 7,
 };
 
+// ── Time-in-Force ─────────────────────────────────────────────────────────────
+enum class TimeInForce : std::uint8_t {
+    GTC = 0,   // Good-Till-Cancelled — residual rests on book (default)
+    IOC = 1,   // Immediate-Or-Cancel — residual discarded after match attempt
+    FOK = 2,   // Fill-Or-Kill        — fully fill or immediately cancel (no trade)
+};
+
 }  // namespace exchange

@@ -51,20 +51,57 @@ EventList MatchingEngine::submit(const NewLimitOrderCmd& cmd) {
     out.push_back(make_order_event(
         seq, incoming->id, EventType::OrderAccepted, incoming->remaining_qty));
 
-    // ── 3. Matching ───────────────────────────────────────────────────────────
+    // ── 3. FOK pre-check ──────────────────────────────────────────────────────
+    // Fill-Or-Kill: verify sufficient crossed volume exists before any trade.
+    // If not enough → accept then immediately cancel; no partial trades produced.
+    if (cmd.tif == TimeInForce::FOK) {
+        const BookSide& opp = (incoming->side == Side::Buy) ? book_.asks() : book_.bids();
+        Quantity avail = 0;
+        if (incoming->side == Side::Buy) {
+            for (const auto& [p, lvl] : opp.levels()) {
+                if (!price_crosses(incoming, &lvl)) break;
+                avail += lvl.total_qty;
+                if (avail >= incoming->remaining_qty) break;
+            }
+        } else {
+            for (auto it = opp.levels().rbegin(); it != opp.levels().rend(); ++it) {
+                if (!price_crosses(incoming, &it->second)) break;
+                avail += it->second.total_qty;
+                if (avail >= incoming->remaining_qty) break;
+            }
+        }
+        if (avail < incoming->remaining_qty) {
+            out.push_back(make_order_event(
+                advance_seq(), incoming->id, EventType::OrderCancelled,
+                incoming->remaining_qty));
+            auto discard = book_.unregister_order(incoming->id);
+            return out;
+        }
+    }
+
+    // ── 4. Matching ───────────────────────────────────────────────────────────
     // Sweeps the opposite side FIFO until the incoming is exhausted or no
     // more price-crossing levels remain.  All trade and fill events are
     // appended to `out` inside match().
     match(incoming, out);
 
-    // ── 4. Residual resting vs full fill ───────────────────────────────────────
-    // Fully filled incoming limits are unregistered here — they never rested, so
-    // the ownership map must not retain dead Order objects.
+    // ── 5. Residual resting vs discard ────────────────────────────────────────
+    // GTC → place residual on book (original behavior).
+    // IOC → discard residual; emit OrderCancelled.
+    // FOK → pre-check passed so remaining_qty == 0 here; falls into the else.
     if (incoming->remaining_qty > 0) {
-        incoming->state = OrderState::Active;
-        book_.place_on_book(incoming);
-        out.push_back(make_order_event(
-            advance_seq(), incoming->id, EventType::OrderRested, incoming->remaining_qty));
+        if (cmd.tif == TimeInForce::GTC) {
+            incoming->state = OrderState::Active;
+            book_.place_on_book(incoming);
+            out.push_back(make_order_event(
+                advance_seq(), incoming->id, EventType::OrderRested, incoming->remaining_qty));
+        } else {
+            // IOC (or defensive FOK): discard leftover without placing on book
+            out.push_back(make_order_event(
+                advance_seq(), incoming->id, EventType::OrderCancelled,
+                incoming->remaining_qty));
+            auto discard = book_.unregister_order(incoming->id);
+        }
     } else {
         auto discard = book_.unregister_order(incoming->id);
     }

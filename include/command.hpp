@@ -6,10 +6,11 @@ namespace exchange {
 
 // ── New limit order ───────────────────────────────────────────────────────────
 struct NewLimitOrderCmd {
-    OrderId  order_id{0};
-    Side     side{Side::Buy};
-    Price    price{0};
-    Quantity quantity{0};
+    OrderId     order_id{0};
+    Side        side{Side::Buy};
+    Price       price{0};
+    Quantity    quantity{0};
+    TimeInForce tif{TimeInForce::GTC};  // default: rest residual (existing GTC behavior)
 };
 
 // ── New market order ──────────────────────────────────────────────────────────
